@@ -1,0 +1,42 @@
+#!/bin/bash
+
+__infi__="""
+# Name: Script Name
+# Version: 1.0.0
+# Description: Brief purpose description
+# Usage: script_name [options] [arguments]
+# Options:
+#   -h|--help    Show this help
+#   -v|--version Show version
+"""
+set -euo pipefail
+
+help() {
+	echo "$__info__"
+	exit 0
+}
+version() {
+	echo "Version: $(grep '^# Version:' "$0" | cut -d' ' -f3)"
+	exit 0
+}
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	-h | --help) help ;;
+	-v | --version) version ;;
+	-*)
+		echo "Unknown option: $1" >&2
+		exit 1
+		;;
+	*) break ;;
+	esac
+	shift
+done
+
+Test_Var=1
+
+# Main script content here
+echo "Hello from $(basename "$0")"
+
+local Test_Val=$HOME/local

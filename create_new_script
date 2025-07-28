@@ -1,0 +1,40 @@
+#!/bin/bash
+# Name: Script Name
+# Version: 1.0.0
+# Description: Brief purpose description
+# Usage: create_new_script [options] <script_name>
+# Options:
+#   -h --help    Show this help
+#   -v --version Show version
+
+help() {
+    echo "Usage: $(basename "$0") [options]"
+    grep '^#/' "$0" | cut -c4-
+    exit 0
+}
+version() {
+    echo "Version: $(grep '^# Version:' "$0" | cut -d' ' -f3)"
+    exit 0
+}
+
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help) help ;;
+        -v|--version) version ;;
+        -*) echo "Unknown option: $1" >&2; exit 1 ;;
+        *) break ;;
+    esac
+    shift
+done
+
+echo "Parse END"
+echo $(pwd)
+#############################################################
+# Main script logic here
+SCRIPT_DIR="${HOME}/scripts"
+if cp -i $SCRIPT_DIR/__template_script.sh ./$1; then
+    echo "New script created at -> $(pwd)/$1"
+fi
+# cp $SCRIPT_DIR/__template_script.sh ./$1

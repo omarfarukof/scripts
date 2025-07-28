@@ -1,0 +1,198 @@
+#!/bin/bash
+
+__info__="""
+# Name: Modify Script Variable
+# Version: 1.0.2
+# Description: Modifies Script Variable
+# Usage: $(basename "$0") <SCRIPT_FILE> [options]
+# Options:
+#   -h|--help    Show this help
+#   -v|--version Show version
+#   --add_var <VAR_NAME>        Add new variable
+#   --mod_var <VAR_NAME> <VALUE> Modify variable value
+#   --mod_type <VAR_NAME> <TYPE> Change variable declaration type
+"""
+
+set -euo pipefail
+
+help() {
+    echo "$__info__"
+    exit 0
+}
+version() {
+    echo "Version: $(grep '^# Version:' "$0" | cut -d' ' -f3)"
+    exit 0
+}
+
+
+# Check for required tools
+check_required_tools() {
+    local REQUIRED_CMDS=("sh")
+    for cmd in "${REQUIRED_CMDS[@]}"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            echo "Error: $cmd is required but not installed" >&2
+            exit 1
+        fi
+    done    
+}
+
+# Only execute if the script is run directly (not sourced)
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    check_required_tools
+fi
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help) help ;;
+        -v|--version) version ;;
+        -*) echo "Unknown option: $1" >&2; exit 1 ;;
+        *) break ;;
+    esac
+    shift
+done
+
+# Function to escape strings for sed patterns
+escape_sed_pattern() {
+    printf '%s' "$1" | sed 's/[][\\*^$]/\\&/g'
+}
+
+# Function to escape strings for sed replacement
+escape_sed_replacement() {
+    printf '%s' "$1" | sed 's/[&/\]/\\&/g'
+}
+
+# Check if variable exists in script
+variable_exists() {
+    local script="$1"
+    local var_name="$2"
+    grep -q -E "^[[:space:]]*((export|local|readonly|alias| )[[:space:]]+)?${var_name}[[:space:]]*=" "$script"
+}
+
+# Add new variable
+add_var() {
+    local script="$1"
+    local var_name="$2"
+    local var_value="$3"
+    
+    if variable_exists "$script" "$var_name"; then
+        echo "$var_name already exists in $script"
+        return 1
+    fi
+    
+    echo -e "\n$var_name=$var_value" >> "$script"
+    echo "Added $var_name to $script"
+}
+
+# Modify variable value
+mod_var() {
+    local script="$1"
+    local var_name="$2"
+    local new_value="$3"
+    
+    if ! variable_exists "$script" "$var_name"; then
+        echo "Variable $var_name not found in $script"
+        return 1
+    fi
+
+    # Escape for shell assignment
+    local safe_value
+    # safe_value=$(printf '%q' "$new_value")
+    safe_value="$new_value"
+    
+    # Escape for sed patterns and replacements
+    local var_escaped repl_escaped
+    var_escaped=$(escape_sed_pattern "$var_name")
+    repl_escaped=$(escape_sed_replacement "$safe_value")
+    
+    # Determine sed in-place option based on OS
+    local sed_inplace
+    case "$(uname -s)" in
+        Darwin*) sed_inplace=(-i '') ;;
+        *)       sed_inplace=(-i) ;;
+    esac
+
+    sed "${sed_inplace[@]}" \
+        -e "s/^\([[:space:]]*\)\(\(export\|local\|readonly\)[[:space:]]\+\)\{0,1\}\($var_escaped\)[[:space:]]*=.*/\1\2\4=$repl_escaped/" \
+        "$script"
+        
+    echo "Modified $var_name in $script"
+}
+
+# Change variable declaration type
+mod_type() {
+    local script="$1"
+    local var_name="$2"
+    local new_type="$3"
+    
+    if ! variable_exists "$script" "$var_name"; then
+        echo "Variable $var_name not found in $script"
+        return 1
+    fi
+
+    # Escape for sed
+    local var_escaped type_escaped
+    var_escaped=$(escape_sed_pattern "$var_name")
+    type_escaped=$(escape_sed_replacement "$new_type")
+    
+    # Determine sed in-place option based on OS
+    local sed_inplace
+    case "$(uname -s)" in
+        Darwin*) sed_inplace=(-i '') ;;
+        *)       sed_inplace=(-i) ;;
+    esac
+
+    sed "${sed_inplace[@]}" \
+        -e "s/^\([[:space:]]*\)\(\(export\|local\|readonly\)[[:space:]]\+\)\{0,1\}\($var_escaped[[:space:]]*=.*\)/\1$type_escaped \4/" \
+        "$script"
+        
+    echo "Changed $var_name to $new_type in $script"
+}
+
+# Main script execution
+if [[ $# -lt 2 ]]; then
+    # echo "Usage: $0 <SCRIPT_FILE> [options]"
+    # echo "Options:"
+    # echo "  --add_var <VAR_NAME>        Add new variable"
+    # echo "  --mod_var <VAR_NAME> <VALUE> Modify variable value"
+    # echo "  --mod_type <VAR_NAME> <TYPE> Change variable declaration type"
+    help
+    exit 1
+fi
+
+SCRIPT_FILE="$1"
+if [[ ! -f "$SCRIPT_FILE" ]]; then
+    echo "Error: $SCRIPT_FILE not found" >&2
+    exit 1
+fi
+
+shift
+case "$1" in
+    --add_var)
+        if [[ $# -ne 2 && $# -ne 3 ]]; then
+            echo "Usage: $0 <SCRIPT_FILE> --add_var <VAR_NAME> <VAR_VALUE>"
+            exit 1
+        fi
+        add_var "$SCRIPT_FILE" "$2" "${3:-\"\"}"
+        ;;
+    --mod_var)
+        if [[ $# -ne 3 ]]; then
+            echo "Usage: $0 <SCRIPT_FILE> --mod_var <VAR_NAME> <NEW_VALUE>"
+            exit 1
+        fi
+        mod_var "$SCRIPT_FILE" "$2" "$3"
+        ;;
+    --mod_type)
+        if [[ $# -ne 2 && $# -ne 3 ]]; then
+            echo "Usage: $0 <SCRIPT_FILE> --mod_type <VAR_NAME> <VAR_TYPE>"
+            exit 1
+        fi
+        mod_type "$SCRIPT_FILE" "$2" "${3:-}"
+        ;;
+    *)
+        echo "Invalid option: $1" >&2
+        exit 1
+        ;;
+esac
+
+shfmt -w "$SCRIPT_FILE"
