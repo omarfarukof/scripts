@@ -1,8 +1,8 @@
 #! /bin/bash
 if [ -z "$1" ]; then
-    IMP_DIR="."
+	IMP_DIR="."
 else
-    IMP_DIR=$1
+	IMP_DIR=$1
 fi
 
 echo " Imporing GPG Secret key from ${IMP_DIR}/private.pgp"

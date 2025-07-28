@@ -12,22 +12,25 @@ set -euo pipefail
 
 help() {
 	echo "$__info__"
-    exit 0
+	exit 0
 }
 version() {
-    echo "Version: $(grep '^# Version:' "$0" | cut -d' ' -f3)"
-    exit 0
+	echo "Version: $(grep '^# Version:' "$0" | cut -d' ' -f3)"
+	exit 0
 }
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        -h|--help) help ;;
-        -v|--version) version ;;
-        -*) echo "Unknown option: $1" >&2; exit 1 ;;
-        *) break ;;
-    esac
-    shift
+	case "$1" in
+	-h | --help) help ;;
+	-v | --version) version ;;
+	-*)
+		echo "Unknown option: $1" >&2
+		exit 1
+		;;
+	*) break ;;
+	esac
+	shift
 done
 
 # Main script content here
@@ -35,7 +38,7 @@ done
 # Create a backup of .zshrc with date
 echo "Backing up .zshrc..."
 if [ -f $HOME/.zshrc ]; then
-    cp $HOME/.zshrc $HOME/.zshrc_setup.$(date +%Y%m%d%H%M%S)
+	cp $HOME/.zshrc $HOME/.zshrc_setup.$(date +%Y%m%d%H%M%S)
 fi
 
 echo "Installing OhMyZsh..."
@@ -61,15 +64,15 @@ git clone https://github.com/fdellwing/zsh-bat.git $ZSH_CUSTOM/plugins/zsh-bat
 
 # Set plugins
 __plugins__=(
-sudo aliases alias-finder history emoji encode64
-git gh
-dotenv 
-themes 
-tmux kubectl  
-zsh-autosuggestions
-zsh-syntax-highlighting colorize 
-you-should-use
-zsh-bat
-web-search)
+	sudo aliases alias-finder history emoji encode64
+	git gh
+	dotenv
+	themes
+	tmux kubectl
+	zsh-autosuggestions
+	zsh-syntax-highlighting colorize
+	you-should-use
+	zsh-bat
+	web-search)
 
 mod_script $HOME/.zshrc --mod_var plugins "($__plugins__)"
