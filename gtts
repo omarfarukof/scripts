@@ -1,0 +1,66 @@
+#!/bin/bash
+
+__infi__="""
+# Name: Google TTS
+# Version: 1.0.0
+# Description: Brief purpose description
+"""
+__uses__="""
+# Usage: $(basename "$0") [Tesk]
+# Options:
+#   -h --help    Show this help
+#   -v --version Show version
+"""
+set -euo pipefail
+
+help() {
+	echo "$__infi__"
+	echo "$__uses__"
+	exit 0
+}
+version() {
+	echo "Version: $(grep '^# Version:' "$0" | cut -d' ' -f3)"
+	exit 0
+}
+
+check_required_tools() {
+	local REQUIRED_CMDS=("sh" "gtts-cli" "mpg123")
+	for cmd in "${REQUIRED_CMDS[@]}"; do
+		if ! command -v "$cmd" &>/dev/null; then
+			echo "Error: $cmd is required but not installed" >&2
+			exit 1
+		fi
+	done
+}
+
+# Only execute if the script is run directly (not sourced)
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+	check_required_tools
+fi
+
+# Only execute if the script is run directly (not sourced)
+# Main script content here
+
+speak() {
+    # Clean up on exit or Ctrl-C
+    TMPFILE=$(mktemp --suffix=.mp3)
+    trap 'rm -f "$TMPFILE"' EXIT
+
+    TEXT="$*"
+    gtts-cli "$TEXT" --output "$TMPFILE" && mpg123 -q "$TMPFILE"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    if [[ $# -lt 1 ]]; then
+        help
+    fi
+	# Parse arguments
+	case "$1" in
+	-h | --help) help ;;
+	-v | --version) version ;;
+	*)
+		speak $1
+		;;
+	esac
+	#
+fi

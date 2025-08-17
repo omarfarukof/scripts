@@ -1,0 +1,61 @@
+#!/bin/bash
+
+__info__="""
+# Name: File Info Viewer
+# Version: 1.1.1
+# Description: Show file metadata using exiftool with KDE theme support
+"""
+__uses__="""
+# Usage: $(basename "$0") [options] [file]
+# Options:
+#   -h --help    Show this help
+#   -v --version Show version
+"""
+set -euo pipefail
+
+# Check for required tools
+check_required_tools() {
+    local REQUIRED_CMDS=("yad" "exiftool")
+    for cmd in "${REQUIRED_CMDS[@]}"; do
+        if ! command -v "$cmd" &>/dev/null; then
+            echo "Error: $cmd is required but not installed" >&2
+            exit 1
+        fi
+    done
+}
+
+
+# Show file information using dialog
+show_info() {
+    local file="$1"
+    yad --list --title="$(basename "$file")" --width=400 --height=200 --column=Name --column=Values $(exiftool -t "$file" | sed 's/ /_/g; s/ $/ \\/; s/-/_/g')
+}
+
+# Help function
+help() {
+    echo "$__info__"
+    echo "$__uses__"
+    exit 0
+}
+
+# Version function
+version() {
+    echo "Version: $(grep '^# Version:' "$0" | cut -d' ' -f3)"
+    exit 0
+}
+
+# Main script execution
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    check_required_tools
+
+    if [[ $# -lt 1 ]]; then
+        help
+    fi
+
+    if [ ! -f "$1" ]; then
+        echo "Error: '$1' is not a valid file" >&2
+        exit 1
+    fi
+
+    show_info "$1"
+fi
